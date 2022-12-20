@@ -1,8 +1,8 @@
 from flask import Flask, request, redirect, jsonify, make_response
 from flask_jwt_extended import create_access_token, JWTManager,get_jwt_identity, jwt_required
-import sqlite3, uuid, hashlib, random
+import sqlite3, uuid, pyshorteners, random, hashlib
 from werkzeug.security import generate_password_hash, check_password_hash
-from server import reg, auth
+from server import reg, auth, add_link, update_linkTransitions, delete_link, vivod_links_user, delete_link_transitions
 # from flask_sqlalchemy import SQLAlchemy
 # from dataclasses import dataclass
 # from sqlalchemy.orm import relationship
@@ -22,21 +22,17 @@ def create_db_table():
         	"password" TEXT NOT NULL,
         	PRIMARY KEY("id" AUTOINCREMENT)
         );""")
-        cursor.execute("""CREATE TABLE IF NOT EXISTS "access" (
-        	"id"	INTEGER NOT NULL,
-        	"type"	INTEGER NOT NULL,
-        	"id_link"	TEXT NOT NULL,
-        	"id_user" INTEGER NOT NULL,
-        	PRIMARY KEY("id" AUTOINCREMENT)
-        );""")
+
         cursor.execute("""CREATE TABLE IF NOT EXISTS "links" (
         	"id"	INTEGER NOT NULL,
         	"link" TEXT NOT NULL,
-        	"abbreviated_link" TEXT NOT NULL,
-        	"transitions" INTEGER,
+        	"short_link" TEXT NOT NULL,
+        	"transitions" TEXT,
+        	"type"	INTEGER NOT NULL,
+        	"id_user" INTEGER NOT NULL,
         	PRIMARY KEY("id" AUTOINCREMENT)
         );""")
-
+        #"abbreviated_link" TEXT NOT NULL,
         connect.commit()
         print("User table created successfully")
     except:
@@ -51,10 +47,10 @@ app = Flask(__name__)
 app.config["JWT_SECRET_KEY"] = "jwt-secret-string"
 jwt = JWTManager(app)
 
-@app.route("/")
-def hello_world():
-
-    return "<p>Hello, World!</p>"
+# @app.route("/")
+# def hello_world():
+#
+#     return "<p>Hello, World!</p>"
 
 @app.route("/reg", methods =['POST'])
 def reg_user():
@@ -65,7 +61,6 @@ def reg_user():
         return make_response("Пользователь успешно зарегистирован")
     else:
         return make_response("Невозможно зарегистрировать этого пользователя")
-
 
 @app.route("/auth", methods=['POST'])
 def auth_user():
@@ -79,8 +74,61 @@ def auth_user():
     else:
         return make_response({"error":"Неверный логин или пароль"})
 
-@app.route("/auth", methods=['POST'])
-def auth_user():
+@app.route("/add_link", methods=['POST'])
+
+def add__link():
+    print("я дошел")
+    # @jwt_required()
+    # login = str(get_jwt_identity())
+    u_login = str(request.json.get("u_login", None))
+    full_link = str(request.json.get("full_link", None))
+    transitions = str(request.json.get("transitions", None))
+    short_link = pyshorteners.Shortener().clckru.short(full_link)
+    access = 1
+    if add_link(full_link, short_link, transitions, access, u_login):
+        return make_response({"Данная сокр. ссылка добавлена в базу": short_link})
+    else:
+        return make_response({"error":"возникли проблемы с добавлением"})
+@app.route("/short_link", methods=['POST'])
+def short_links():
+    full_link = str(request.json.get("full_link", None))
+    # short_link = hashlib.md5(full_link.encode()).hexdigest()[:random.randint(8, 12)]
+    short_link = pyshorteners.Shortener().clckru.short(full_link)
+    return short_link
+
+@app.route("/all_links_user", methods=['POST'])
+def all_links_user():
+    id_user = str(request.json.get("id_user", None))
+    links = vivod_links_user(id_user)
+
+    return make_response({"Юзер": id_user, "Ссылки": links})
+
+@app.route("/update_transitions", methods=['POST'])
+def update_transitions():
+    id_link = str(request.json.get("id_link", None))
+    new_name = str(request.json.get("new_name", None))
+    if update_linkTransitions(id_link, new_name):
+        return make_response({"Новый псевдоним ссылки": new_name})
+    else:
+        return make_response({"error": "не удалось обновить псевдоним"})
+
+@app.route("/delete_transitions", methods=['POST'])
+def delete_transitions():
+    id_link = str(request.json.get("id_link", None))
+
+    if delete_link_transitions(id_link):
+        return make_response("Псевдоним успешно удален")
+    else:
+        return make_response({"error": "не удалось удалить псевдоним"})
+
+@app.route("/delete_links", methods=['POST'])
+def delete_links():
+    id_link = str(request.json.get("id_link", None))
+
+    if delete_link(id_link):
+        return make_response("Ccылка успешно удалена")
+    else:
+        return make_response({"error": "не удалось удалить ссылку"})
 
 if __name__=='__main__':
     create_db_table()
