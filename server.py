@@ -230,3 +230,30 @@ def vivod_main_links_user(id_user, transitions, ):
         print("Ошибка")
     finally:
         connect.close()
+
+def id_user_login(login):
+    try:
+        print("0")
+        connect = connect_to_db()
+        cursor = connect.cursor()
+        print("1")
+        cursor.execute(f"SELECT id FROM users WHERE login=:login", {"login": login})
+        connect.commit()
+        m = cursor.fetchall()
+        print(m)
+        return m[0][0]
+
+        # if cursor.fetchall() is None:
+        #     return False;
+        #     print("не удалось найти ссылок у этого пользователя")
+        # else:
+        #     # запрос на вывод всех ссылок по пользователю
+        #     (f"SELECT abbreviated_link FROM links INNER JOIN access ON links.id = access.id_link WHERE access.id_user=:id_user and links.transitions=:transitions ", {"id_user": id_user, "transitions": transitions})
+        #     connect.commit()
+        #     print("Основная сcылка успешно возвращена")
+        #     m = cursor.fetchone()
+        #     return m;
+    except:
+        print("Ошибка")
+    finally:
+        connect.close()
